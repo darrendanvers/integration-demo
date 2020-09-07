@@ -1,0 +1,1 @@
+RUNSCRIPT FROM 'classpath:/single-result-reader-data.sql'
