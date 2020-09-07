@@ -15,9 +15,11 @@ import javax.sql.DataSource;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.batch.core.ChunkListener;
 import org.springframework.batch.core.ExitStatus;
 import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.core.StepExecutionListener;
+import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.util.Assert;
@@ -28,7 +30,7 @@ import org.springframework.util.Assert;
  * @author darren
  * @since 1.0.0
  */
-public class AlbumToCoreProcessor implements ItemProcessor<Album, CoreAlbumWrapper>, StepExecutionListener {
+public class AlbumToCoreProcessor implements ItemProcessor<Album, CoreAlbumWrapper>, StepExecutionListener, ChunkListener {
 
     private static final Logger logger = LoggerFactory.getLogger(AlbumToCoreProcessor.class);
     private static final int LOG_AT = 500;
@@ -41,7 +43,7 @@ public class AlbumToCoreProcessor implements ItemProcessor<Album, CoreAlbumWrapp
             .setLogAt(LOG_AT)
             .build();
 
-    private final Set<String> processedGtinList = new HashSet<>();
+    private final Set<String> insertedGtins = new HashSet<>();
     private final CoreAlbumValidator coreAlbumValidator = new CoreAlbumValidator();
 
     /**
@@ -63,9 +65,6 @@ public class AlbumToCoreProcessor implements ItemProcessor<Album, CoreAlbumWrapp
 
         final Optional<CoreAlbum> existingAlbum = this.coreAlbumDao.findByGtin14(stageAlbum.getGtin14());
 
-        // If we don't get a result back, then we need to insert a new record.
-        final boolean isInsert = existingAlbum.isEmpty();
-
         // If we found a match in the core DB, use that one. If not, make a new album.
         // In both cases, overwrite whatever was in the object with the data from the
         // staging DB.
@@ -75,12 +74,18 @@ public class AlbumToCoreProcessor implements ItemProcessor<Album, CoreAlbumWrapp
             // Validate what will go into the DB.
             this.coreAlbumValidator.validate(coreAlbum);
 
-            // A GTIN can only be in the file once, so keep track of the ones
-            // that have been processed already.
-            this.processGtinOnce(stageAlbum.getGtin14());
-
             // If we get here, it validated and is ready for insert/update.
             stageAlbum.setStatus(Status.COMPLETE);
+
+            // If we don't get a result back and we haven't already processed this GTIN
+            // in the same chunk, then we need to insert a new record.
+            final boolean isInsert = existingAlbum.isEmpty() && this.gtinNotInserted(stageAlbum.getGtin14());
+
+            // We need to keep track of the the GTINs we insert because if the same one appears
+            // in a single chunk, we'd try to insert it twice.
+            if (isInsert) {
+                this.insertedGtins.add(stageAlbum.getGtin14());
+            }
 
             return new CoreAlbumWrapper(coreAlbum, isInsert, stageAlbum);
 
@@ -100,7 +105,6 @@ public class AlbumToCoreProcessor implements ItemProcessor<Album, CoreAlbumWrapp
     @Override
     public void beforeStep(final StepExecution stepExecution) {
 
-        this.processedGtinList.clear();
         this.progressLogger.reset();
     }
 
@@ -119,13 +123,26 @@ public class AlbumToCoreProcessor implements ItemProcessor<Album, CoreAlbumWrapp
                 .setSourceAlbumId(album.getAlbumId());
     }
 
-    private void processGtinOnce(final String gtin14) throws ValidationException {
+    private boolean gtinNotInserted(final String gtin14)  {
 
-        if (this.processedGtinList.contains(gtin14)) {
-            throw new ValidationException("Error in file format.",
-                    String.format("The GTIN %s occurs more than once in the file.", gtin14));
-        }
+        return !this.insertedGtins.contains(gtin14);
+    }
 
-        this.processedGtinList.add(gtin14);
+    @Override
+    public void beforeChunk(final ChunkContext context) {
+        // Clear out the inserted GTINs since they're saved
+        // in the database now and will come back when we
+        // try to look them up.
+        this.insertedGtins.clear();
+    }
+
+    @Override
+    public void afterChunk(final ChunkContext context) {
+        // Intentionally empty.
+    }
+
+    @Override
+    public void afterChunkError(final ChunkContext context) {
+        // Intentionally empty.
     }
 }
