@@ -1,0 +1,32 @@
+version: '3.3'
+services:
+  db:
+    image: mysql:latest
+    restart: always
+    environment:
+      MYSQL_DATABASE: 'integration-db'
+      MYSQL_ROOT_PASSWORD: 'password'
+    healthcheck:
+      test: mysqladmin ping -h 127.0.0.1 -u root
+    ports:
+      - '3306:3306'
+    expose:
+      - '3306'
+    volumes:
+      - my-db:/var/lib/mysql
+      - ./schema.sql:/docker-entrypoint-initdb.d/10-schema.sql:ro
+      - ./data.sql:/docker-entrypoint-initdb.d/20-data.sql:ro
+  app:
+    build: .
+    image: 'dev.codestijl/integration-demo:0.1.0'
+    command: sh -c "/wait && java -Dspring.profiles.active=docker -jar app.jar" # Wait for MySQL and then run the batch job.
+    environment:
+      - WAIT_HOSTS=db:3306
+      - WAIT_HOSTS_TIMEOUT=300
+      - WAIT_SLEEP_INTERVAL=30
+      - WAIT_HOST_CONNECT_TIMEOUT=30
+    depends_on:
+      - db
+# MySQL data volumes.
+volumes:
+  my-db:

@@ -1,0 +1,76 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="
+    http://www.springframework.org/schema/beans
+    http://www.springframework.org/schema/beans/spring-beans-4.2.xsd
+    http://www.springframework.org/schema/util
+    http://www.springframework.org/schema/util/spring-util.xsd">
+
+    <!-- This bean will generate a batch ID that can be passed through the   -->
+    <!-- job parameters to the other beans.                                  -->
+    <bean id="batchIdGenerator" class="dev.codestijl.integrationdemo.BatchIdParameterGenerator" />
+
+    <!-- ******************************************************************* -->
+    <!-- Beans for the step that creates and saves the batch record.         -->
+    <!-- This will save all the raw data from the external source.           -->
+    <!-- ******************************************************************* -->
+    <bean id="batchTasklet" class="dev.codestijl.integrationdemo.loadbatch.BatchTasklet" scope="step">
+        <constructor-arg name="dataSource" ref="dataSource" />
+        <constructor-arg name="filePath" value="/input.json" />
+        <constructor-arg name="batchId" value="#{jobParameters['batchId']}" />
+    </bean>
+
+    <!-- ******************************************************************* -->
+    <!-- Beans for the step that reads from the BATCH table, parses each     -->
+    <!-- album from the source data, and saves the albums and songs in the   -->
+    <!-- staging tables.                                                     -->
+    <!-- ******************************************************************* -->
+    <bean id="clobReader" class="dev.codestijl.integrationdemo.loadalbum.ClobAlbumReader" scope="step">
+        <constructor-arg name="dataSource" ref="dataSource" />
+        <constructor-arg name="batchId" value="#{jobParameters['batchId']}" />
+    </bean>
+    <bean id="albumProcessor" class="dev.codestijl.integrationdemo.loadalbum.AlbumProcessor" scope="step">
+        <constructor-arg name="batchId" value="#{jobParameters['batchId']}" />
+    </bean>
+    <bean id="albumWriter" class="dev.codestijl.integrationdemo.loadalbum.AlbumWriter" scope="step">
+        <constructor-arg name="dataSource" ref="dataSource" />
+    </bean>
+
+    <!-- ******************************************************************* -->
+    <!-- Beans for the step that reads from the staged Album and Song tables -->
+    <!-- and moves the data into the core tables.                            -->
+    <!-- ******************************************************************* -->
+    <bean id="albumReader" class="dev.codestijl.integrationdemo.loadcore.AlbumReader" scope="step">
+        <constructor-arg name="dataSource" ref="dataSource" />
+        <constructor-arg name="batchId" value="#{jobParameters['batchId']}" />
+    </bean>
+
+    <bean id="albumToCoreProcessor" class="dev.codestijl.integrationdemo.loadcore.AlbumToCoreProcessor" scope="step">
+        <constructor-arg name="dataSource" ref="dataSource" />
+    </bean>
+
+    <bean id="albumUpdater" class="dev.codestijl.integrationdemo.loadcore.AlbumWriter" scope="step">
+        <constructor-arg name="dataSource" ref="dataSource" />
+    </bean>
+
+    <bean id="coreAlbumWriter" class="dev.codestijl.integrationdemo.loadcore.CoreAlbumWriter" scope="step">
+        <constructor-arg name="dataSource" ref="dataSource" />
+    </bean>
+
+    <bean id="albumErrorWriter" class="dev.codestijl.integrationdemo.loadcore.AlbumErrorWriter" scope="step">
+        <constructor-arg name="dataSource" ref="dataSource" />
+    </bean>
+
+    <!-- This step writes to the core tables and updates each album to note  -->
+    <!-- it's processed, so we use a composite writer.                       -->
+    <bean id="loadCoreCompositeWriter" class="org.springframework.batch.item.support.CompositeItemWriter" scope="step">
+        <property name="delegates">
+            <util:list>
+                <ref bean="albumUpdater" />
+                <ref bean="coreAlbumWriter" />
+                <ref bean="albumErrorWriter" />
+            </util:list>
+        </property>
+    </bean>
+</beans>

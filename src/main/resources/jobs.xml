@@ -1,0 +1,43 @@
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:batch="http://www.springframework.org/schema/batch"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/batch
+    http://www.springframework.org/schema/batch/spring-batch-3.0.xsd
+    http://www.springframework.org/schema/beans
+    http://www.springframework.org/schema/beans/spring-beans-4.2.xsd">
+
+    <import resource="beans.xml" />
+
+    <bean id="stepScope" class="org.springframework.batch.core.scope.StepScope">
+        <property name="autoProxy" value="true"/>
+    </bean>
+
+    <batch:job id="INTEGRATION-DEMO" incrementer="batchIdGenerator">
+
+        <!-- Load the BATCH table with the raw source data. -->
+        <batch:step id="LOAD-BATCH" next="LOAD-ALBUM">
+            <batch:tasklet ref="batchTasklet" />
+        </batch:step>
+
+        <!-- Parse the data from the BATCH tables and load the result into -->
+        <!-- the ALBUM and SONG tables in the staging DB. -->
+        <batch:step id="LOAD-ALBUM" next="LOAD-CORE">
+            <batch:tasklet>
+                <batch:chunk reader="clobReader" processor="albumProcessor"
+                             writer="albumWriter" commit-interval="100" />
+            </batch:tasklet>
+        </batch:step>
+
+        <!-- Update the CORE database with the information from the STAGE schema. -->
+        <batch:step id="LOAD-CORE">
+            <batch:tasklet>
+                <batch:chunk reader="albumReader" processor="albumToCoreProcessor"
+                             writer="loadCoreCompositeWriter" commit-interval="100" />
+            </batch:tasklet>
+            <batch:listeners>
+                <batch:listener ref="albumUpdater" />
+                <batch:listener ref="coreAlbumWriter" />
+                <batch:listener ref="albumErrorWriter" />
+            </batch:listeners>
+        </batch:step>
+    </batch:job>
+</beans>
