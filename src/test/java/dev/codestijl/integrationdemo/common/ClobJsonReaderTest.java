@@ -89,7 +89,7 @@ public class ClobJsonReaderTest {
     public void read_multipleRows_multipleValues_returnsAllValues() throws Exception {
 
         final ClobJsonReader<JsonTestClass> clobJsonReader = new ClobJsonReader<>(this.dataSource,
-                "SELECT VALUE FROM CJR_TEST",
+                "SELECT VALUE FROM CJR.CJR_TEST",
                 JsonTestClass.class);
 
         // The StepExecution is not used.
@@ -122,7 +122,7 @@ public class ClobJsonReaderTest {
     public void read_singleRow_withPreparedStatementSetter_multipleValues_returnsAllValues() throws Exception {
 
         final ClobJsonReader<JsonTestClass> clobJsonReader = new ClobJsonReader<>(this.dataSource,
-                "SELECT VALUE FROM CJR_TEST WHERE ID = ?",
+                "SELECT VALUE FROM CJR.CJR_TEST WHERE ID = ?",
                 JsonTestClass.class, (ps) -> ps.setLong(1, 1L));
 
         // The StepExecution is not used.
@@ -154,7 +154,7 @@ public class ClobJsonReaderTest {
     public void read_beforeStepNotCalled_returnsNull() throws Exception {
 
         final ClobJsonReader<JsonTestClass> clobJsonReader = new ClobJsonReader<>(this.dataSource,
-                "SELECT VALUE FROM CJR_TEST WHERE ID = ?",
+                "SELECT VALUE FROM CJR.CJR_TEST WHERE ID = ?",
                 JsonTestClass.class, (ps) -> ps.setLong(1, 1L));
 
         Assert.assertNull(clobJsonReader.read());

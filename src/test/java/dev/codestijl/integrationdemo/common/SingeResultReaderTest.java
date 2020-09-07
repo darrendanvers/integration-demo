@@ -86,7 +86,7 @@ public class SingeResultReaderTest {
     @Test
     public void extractData_noResults_returnsNull() {
 
-        final SrrTestClass result = this.jdbcTemplate.query("SELECT ID, VALUE FROM SRR_TEST WHERE ID = 3",
+        final SrrTestClass result = this.jdbcTemplate.query("SELECT ID, VALUE FROM SRR.SRR_TEST WHERE ID = 3",
                 SINGLE_RESULT_READER);
         Assert.assertNull(result);
     }
@@ -98,7 +98,7 @@ public class SingeResultReaderTest {
     @Test
     public void extractData_oneResult_returnsObject() {
 
-        final SrrTestClass result = this.jdbcTemplate.query("SELECT ID, VALUE FROM SRR_TEST WHERE ID = 1",
+        final SrrTestClass result = this.jdbcTemplate.query("SELECT ID, VALUE FROM SRR.SRR_TEST WHERE ID = 1",
                 SINGLE_RESULT_READER);
         Assert.assertNotNull(result);
         Assert.assertEquals(Long.valueOf(1L), result.getId());
@@ -112,6 +112,6 @@ public class SingeResultReaderTest {
     public void extractData_twoResults_throwsError() {
 
         Assert.assertThrows(IncorrectResultSizeDataAccessException.class,
-            () -> this.jdbcTemplate.query("SELECT ID, VALUE FROM SRR_TEST", SINGLE_RESULT_READER));
+            () -> this.jdbcTemplate.query("SELECT ID, VALUE FROM SRR.SRR_TEST", SINGLE_RESULT_READER));
     }
 }
