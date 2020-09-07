@@ -35,7 +35,6 @@ public class ClobJsonReader<T> implements ItemReader<T>, StepExecutionListener {
     private final PreparedStatementSetter preparedStatementSetter;
     private final Class<? extends T> clazz;
 
-    private int rowsRead;
     private Connection connection;
     private PreparedStatement preparedStatement;
     private ResultSet resultSet;
@@ -43,6 +42,9 @@ public class ClobJsonReader<T> implements ItemReader<T>, StepExecutionListener {
     private MappingIterator<T> mappingIterator;
 
     private boolean hasResult;
+
+    private int rowsRead;
+    private int recordsRead;
 
     /**
      * Error thrown when this class can't be configured.
@@ -120,7 +122,7 @@ public class ClobJsonReader<T> implements ItemReader<T>, StepExecutionListener {
 
         // If there's data left in the iterator, return it.
         if (this.mappingIterator.hasNext()) {
-            this.rowsRead++;
+            this.recordsRead++;
             return this.mappingIterator.next();
         }
 
@@ -134,6 +136,7 @@ public class ClobJsonReader<T> implements ItemReader<T>, StepExecutionListener {
     public void beforeStep(final StepExecution stepExecution) {
 
         this.rowsRead = 0;
+        this.recordsRead = 0;
 
         try {
 
@@ -177,6 +180,7 @@ public class ClobJsonReader<T> implements ItemReader<T>, StepExecutionListener {
         if (this.hasResult) {
 
             logger.debug("Next record available.");
+            this.rowsRead++;
 
             // Set up the data to return.
             this.clob = resultSet.getClob(1);
@@ -194,7 +198,7 @@ public class ClobJsonReader<T> implements ItemReader<T>, StepExecutionListener {
     @Override
     public ExitStatus afterStep(final StepExecution stepExecution) {
 
-        logger.info(String.format("%,d rows read.", this.rowsRead));
+        logger.info(String.format("%,d records read from %,d rows in the table.", this.recordsRead, this.rowsRead));
 
         // Try and close everything. At this point, if we get errors, just log them.
         this.freeClob();

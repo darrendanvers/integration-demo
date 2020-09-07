@@ -1,2 +1,2 @@
-INSERT INTO CJR_TEST (ID, VALUE) VALUES (1, '[{"id": 0, "values" : []}, {"id": 1, "values" : [3]}]');
-INSERT INTO CJR_TEST (ID, VALUE) VALUES (2, '[{"id": 2, "values" : [6, 8]}, {"id": 3, "values" : [3, 4, 9]}]');
+INSERT INTO CJR.CJR_TEST (ID, VALUE) VALUES (1, '[{"id": 0, "values" : []}, {"id": 1, "values" : [3]}]');
+INSERT INTO CJR.CJR_TEST (ID, VALUE) VALUES (2, '[{"id": 2, "values" : [6, 8]}, {"id": 3, "values" : [3, 4, 9]}]');
