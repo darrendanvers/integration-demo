@@ -66,6 +66,16 @@ spotbugsMain {
 	}
 }
 
+spotbugsTest {
+	reports {
+		xml.enabled = false
+		html.configure {
+			enabled = true
+			stylesheet = 'fancy-hist.xsl'
+		}
+	}
+}
+
 // Configure PMD.
 pmd {
 	toolVersion = "6.27.0"

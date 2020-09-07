@@ -59,13 +59,17 @@ public class ClobJsonReader<T> implements ItemReader<T>, StepExecutionListener {
          *
          * @param message The error message.
          */
-        public ClobReaderConfigurationException(final   String message) {
+        public ClobReaderConfigurationException(final String message) {
             super(message);
         }
     }
 
     /**
      * Constructs a new ClobJsonReader. This overloading should be used when the SQL contains no bind variables.
+     *
+     * <p>This class expects to be running inside a Spring Batch environment, although that is not strictly required.
+     * If you are using this class outside Spring Batch, ensure beforeStep() is called before read() so that the
+     * class has prepared data for reading.</p>
      *
      * @param dataSource The DataSource to use to run queries.
      * @param sql The SQL to run to obtain a cursor with JSON data. See the notes on the other constructor for
@@ -79,6 +83,10 @@ public class ClobJsonReader<T> implements ItemReader<T>, StepExecutionListener {
 
     /**
      * Constructs a new ClobJsonReader. This overloading should be used when the SQL contains bind variables.
+     *
+     * <p>This class expects to be running inside a Spring Batch environment, although that is not strictly required.
+     * If you are using this class outside Spring Batch, ensure beforeStep() is called before read() so that the
+     * class has prepared data for reading.</p>
      *
      * @param dataSource The DataSource to use to run queries.
      * @param sql The SQL to run to obtain a cursor with JSON data. This query should return only one column: the column
@@ -136,7 +144,7 @@ public class ClobJsonReader<T> implements ItemReader<T>, StepExecutionListener {
             this.preparedStatement = this.connection.prepareStatement(this.sql);
 
             // If we've got a preparedStatement, use it to set the bind variables.
-            if (Objects.nonNull(this.preparedStatement)) {
+            if (Objects.nonNull(this.preparedStatementSetter)) {
                 this.preparedStatementSetter.setValues(this.preparedStatement);
             }
 
