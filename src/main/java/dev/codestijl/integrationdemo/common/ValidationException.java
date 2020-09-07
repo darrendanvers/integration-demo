@@ -29,4 +29,14 @@ public class ValidationException extends Exception {
         super(message);
         this.errors.addAll(errors);
     }
+
+    /**
+     * Constructs a new ValidationException with a single error.
+     *
+     * @param message The message for the exception.
+     * @param error The validation error.
+     */
+    public ValidationException(final String message, final String error) {
+        this(message, List.of(error));
+    }
 }
