@@ -32,9 +32,6 @@ public class AlbumToCoreProcessor implements ItemProcessor<Album, CoreAlbumWrapp
 
     private static final Logger logger = LoggerFactory.getLogger(AlbumToCoreProcessor.class);
     private static final int LOG_AT = 500;
-    private static final int GTIN_14_LENGTH = 14;
-    private static final int ALBUM_NAME_MAX_LENGTH = 100;
-    private static final int ARTIST_NAME_MAX_LENGTH = 100;
     private static final int ERROR_TEXT_MAX_LENGTH = 1_000;
 
     private final CoreAlbumDao coreAlbumDao;
@@ -44,7 +41,8 @@ public class AlbumToCoreProcessor implements ItemProcessor<Album, CoreAlbumWrapp
             .setLogAt(LOG_AT)
             .build();
 
-    private final Set<String> gtinMap = new HashSet<>();
+    private final Set<String> processedGtinList = new HashSet<>();
+    private final CoreAlbumValidator coreAlbumValidator = new CoreAlbumValidator();
 
     /**
      * Creates a new AlbumToCoreProcessor.
@@ -75,14 +73,14 @@ public class AlbumToCoreProcessor implements ItemProcessor<Album, CoreAlbumWrapp
 
         try {
             // Validate what will go into the DB.
-            this.validate(coreAlbum);
-
-            // If we get here, it validated and is ready for insert/update.
-            stageAlbum.setStatus(Status.COMPLETE);
+            this.coreAlbumValidator.validate(coreAlbum);
 
             // A GTIN can only be in the file once, so keep track of the ones
             // that have been processed already.
-            this.gtinMap.add(stageAlbum.getGtin14());
+            this.processGtinOnce(stageAlbum.getGtin14());
+
+            // If we get here, it validated and is ready for insert/update.
+            stageAlbum.setStatus(Status.COMPLETE);
 
             return new CoreAlbumWrapper(coreAlbum, isInsert, stageAlbum);
 
@@ -102,6 +100,7 @@ public class AlbumToCoreProcessor implements ItemProcessor<Album, CoreAlbumWrapp
     @Override
     public void beforeStep(final StepExecution stepExecution) {
 
+        this.processedGtinList.clear();
         this.progressLogger.reset();
     }
 
@@ -120,71 +119,13 @@ public class AlbumToCoreProcessor implements ItemProcessor<Album, CoreAlbumWrapp
                 .setSourceAlbumId(album.getAlbumId());
     }
 
-    private void validate(final CoreAlbum coreAlbum) throws ValidationException {
+    private void processGtinOnce(final String gtin14) throws ValidationException {
 
-        final List<String> errors = new LinkedList<>();
-
-        this.validateGtin14(coreAlbum.getGtin14()).ifPresent(errors::add);
-        this.validateAlbumName(coreAlbum.getAlbumName()).ifPresent(errors::add);
-        this.validateArtistName(coreAlbum.getArtistName()).ifPresent(errors::add);
-        this.validateSourceAlbum(coreAlbum.getSourceAlbumId()).ifPresent(errors::add);
-        this.validateAlbumId(coreAlbum.getAlbumId()).ifPresent(errors::add);
-
-        if (!errors.isEmpty()) {
-            throw new ValidationException("Unable to validate album.", errors);
-        }
-    }
-
-    private Optional<String> validateGtin14(final String gtin14) {
-
-        if (Objects.isNull(gtin14)) {
-            return Optional.of("GTIN-14 name is required.");
-        } else if (this.gtinMap.contains(gtin14)) {
-            return Optional.of(String.format("The GTIN %s occurs more than once in the file.", gtin14));
-        } else if (gtin14.length() != GTIN_14_LENGTH) {
-            return Optional.of("GTIN-14 must be 14 characters long.");
+        if (this.processedGtinList.contains(gtin14)) {
+            throw new ValidationException("Error in file format.",
+                    String.format("The GTIN %s occurs more than once in the file.", gtin14));
         }
 
-        return Optional.empty();
-    }
-
-    private Optional<String> validateAlbumName(final String albumName) {
-
-        if (Objects.isNull(albumName)) {
-            return Optional.of("Album name is required.");
-        } else if (albumName.length() > ALBUM_NAME_MAX_LENGTH) {
-            return Optional.of("Album name must be 100 characters or less.");
-        }
-
-        return Optional.empty();
-    }
-
-    private Optional<String> validateArtistName(final String artistName) {
-
-        if (Objects.isNull(artistName)) {
-            return Optional.of("Artist name is required.");
-        } else if (artistName.length() > ARTIST_NAME_MAX_LENGTH) {
-            return Optional.of("Artist name must be 100 characters or less.");
-        }
-
-        return Optional.empty();
-    }
-
-    private Optional<String> validateSourceAlbum(final String sourceAlbumId) {
-
-        if (Objects.isNull(sourceAlbumId)) {
-            return Optional.of("Source album ID is required.");
-        }
-
-        return Optional.empty();
-    }
-
-    private Optional<String> validateAlbumId(final String albumId) {
-
-        if (Objects.isNull(albumId)) {
-            return Optional.of("Album ID is required.");
-        }
-
-        return Optional.empty();
+        this.processedGtinList.add(gtin14);
     }
 }
