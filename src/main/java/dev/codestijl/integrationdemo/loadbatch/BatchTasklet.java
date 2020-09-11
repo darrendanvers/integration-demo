@@ -56,9 +56,6 @@ public class BatchTasklet implements Tasklet {
 
         logger.info(String.format("Loading staging with batch '%s'.", this.batchId));
 
-        // Add the ID to the job parameters so that it can be used by later steps.
-        chunkContext.getStepContext().getStepExecution().getJobExecution().getExecutionContext().put("batchId", this.batchId);
-
         // Stream the file into a CLOB field in the BATCH table.
         try (InputStreamReader inputStreamReader = new
                 InputStreamReader(this.getClass().getResourceAsStream(this.filePath), StandardCharsets.UTF_8)) {
