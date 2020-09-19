@@ -1,5 +1,6 @@
 package dev.codestijl.integrationdemo.entity;
 
+import java.time.Instant;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -23,6 +24,8 @@ public class Album {
     private String albumId;
     private String batchId;
     private Status status;
+    private Instant createTime;
+    private Instant lastUpdateTime;
 
     // Data fields.
     @JsonProperty("gtin-14")

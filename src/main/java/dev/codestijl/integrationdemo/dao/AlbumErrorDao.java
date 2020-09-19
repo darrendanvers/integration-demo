@@ -1,5 +1,6 @@
 package dev.codestijl.integrationdemo.dao;
 
+import dev.codestijl.integrationdemo.common.SingleResultReader;
 import dev.codestijl.integrationdemo.entity.AlbumError;
 
 import java.sql.PreparedStatement;
@@ -8,8 +9,10 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Optional;
 
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.util.Assert;
 
 /**
@@ -23,6 +26,18 @@ public class AlbumErrorDao implements Dao<AlbumError> {
     private static final String INSERT_SQL = "INSERT INTO STAGE.ALBUM_ERROR " +
             "(ERROR_ID, ALBUM_ID, BATCH_ID, CREATE_TIME, ERROR_TEXT) " +
             "VALUES (?, ?, ?, ?, ?)";
+
+
+    public static final String SELECT_SQL = "SELECT ERROR_ID, ALBUM_ID, BATCH_ID, CREATE_TIME, ERROR_TEXT " +
+            "FROM STAGE.ALBUM_ERROR ";
+
+    private static final RowMapper<AlbumError> ROW_MAPPER = (rs, rowNum) ->
+            new AlbumError().setErrorId(rs.getString("ERROR_ID"))
+                    .setAlbumId(rs.getString("ALBUM_ID"))
+                    .setBatchId(rs.getString("BATCH_ID"))
+                    .setErrorText(rs.getString("ERROR_TEXT"))
+                    .setCreateTime(rs.getTimestamp("CREATE_TIME").toInstant());
+    private static final SingleResultReader<AlbumError> SINGLE_RESULT_READER = new SingleResultReader<>(ROW_MAPPER);
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -66,4 +81,12 @@ public class AlbumErrorDao implements Dao<AlbumError> {
         final int[] rowsInserted = this.jdbcTemplate.batchUpdate(INSERT_SQL, new ErrorInsert(toInsert));
         return Arrays.stream(rowsInserted).sum();
     }
+
+    @Override
+    public Optional<AlbumError> findById(final String id) {
+
+        final String sql = SELECT_SQL + "WHERE ERROR_ID = ?";
+        return Optional.ofNullable(this.jdbcTemplate.query(sql, this.argsAsArray(id), SINGLE_RESULT_READER));
+    }
+
 }

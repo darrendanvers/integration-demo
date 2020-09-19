@@ -1,5 +1,6 @@
 package dev.codestijl.integrationdemo.dao;
 
+import dev.codestijl.integrationdemo.common.SingleResultReader;
 import dev.codestijl.integrationdemo.entity.Album;
 import dev.codestijl.integrationdemo.entity.Status;
 
@@ -9,6 +10,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Optional;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -35,7 +37,7 @@ public class AlbumDao implements Dao<Album> {
     /**
      * SQL to use to select rows from the ALBUM table.
      */
-    public static final String SELECT_SQL = "SELECT ALBUM_ID, GTIN_14, ALBUM_NAME, ARTIST_NAME, STATUS_CD, BATCH_ID " +
+    public static final String SELECT_SQL = "SELECT ALBUM_ID, GTIN_14, ALBUM_NAME, ARTIST_NAME, STATUS_CD, BATCH_ID, CREATE_TIME, LAST_UPDATE_TIME " +
             "FROM STAGE.ALBUM";
 
     /**
@@ -47,10 +49,13 @@ public class AlbumDao implements Dao<Album> {
                 .setAlbumName(rs.getString("ALBUM_NAME"))
                 .setArtist(rs.getString("ARTIST_NAME"))
                 .setBatchId(rs.getString("BATCH_ID"))
-                .setStatus(Status.of(rs.getString("STATUS_CD")));
+                .setStatus(Status.of(rs.getString("STATUS_CD")))
+                .setCreateTime(rs.getTimestamp("CREATE_TIME").toInstant())
+                .setLastUpdateTime(rs.getTimestamp("LAST_UPDATE_TIME").toInstant());
+
+    private static final SingleResultReader<Album> SINGLE_RESULT_READER = new SingleResultReader<>(ROW_MAPPER);
 
     private final JdbcTemplate jdbcTemplate;
-
 
     /**
      * BatchPreparedStatementSetter to insert rows in the ALBUM table.
@@ -126,5 +131,12 @@ public class AlbumDao implements Dao<Album> {
         final int[] rowsUpdated = this.jdbcTemplate.batchUpdate(UPDATE_SQL, new AlbumUpdate(toUpdate));
 
         return Arrays.stream(rowsUpdated).sum();
+    }
+
+    @Override
+    public Optional<Album> findById(final String albumId) {
+
+        final String sql = SELECT_SQL + " WHERE ALBUM_ID = ?";
+        return Optional.ofNullable(this.jdbcTemplate.query(sql, this.argsAsArray(albumId), SINGLE_RESULT_READER));
     }
 }
