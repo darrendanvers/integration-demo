@@ -1,5 +1,7 @@
 package dev.codestijl.integrationdemo.entity;
 
+import java.time.Instant;
+
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -19,6 +21,7 @@ public class AlbumError {
     private String errorId;
     private String albumId;
     private String batchId;
+    private Instant createTime;
 
     // Data field.
     private String errorText;

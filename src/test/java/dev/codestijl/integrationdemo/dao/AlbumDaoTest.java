@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import javax.sql.DataSource;
 
 import org.junit.Assert;
@@ -25,6 +26,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * @since 1.0.0
  */
 @SpringBootTest
+// I can't find a way to turn this off for the test packages only, but
+// there is no reason to break this up.
+@SuppressWarnings("PMD.TooManyMethods")
 public class AlbumDaoTest {
 
     // This is in the test data.
@@ -44,28 +48,12 @@ public class AlbumDaoTest {
 
         final String albumId = IdUtils.newId();
 
-        final Album album = new Album().setAlbumId(albumId)
-                .setAlbumName("test album 1")
-                .setArtist("test artist 1")
-                .setBatchId(BATCH_ID)
-                .setGtin14("98837456178392")
-                .setStatus(Status.COMPLETE);
+        final Album album = albumFromId(albumId);
 
-        final int rowsInserted = albumDao.insert(List.of(album));
+        final int rowsInserted = albumDao.insert(album);
         Assert.assertEquals(1, rowsInserted);
 
-        final Optional<Album> toCompare = albumDao.findById(albumId);
-
-        Assert.assertTrue(toCompare.isPresent());
-
-        Assert.assertEquals(albumId, toCompare.get().getAlbumId());
-        Assert.assertEquals("test album 1", toCompare.get().getAlbumName());
-        Assert.assertEquals("test artist 1", toCompare.get().getArtist());
-        Assert.assertEquals(BATCH_ID, toCompare.get().getBatchId());
-        Assert.assertEquals("98837456178392", toCompare.get().getGtin14());
-        Assert.assertEquals(Status.COMPLETE, toCompare.get().getStatus());
-        Assert.assertEquals(toCompare.get().getCreateTime(), toCompare.get().getLastUpdateTime());
-        Assert.assertTrue(toCompare.get().getCreateTime().isAfter(Instant.now().minus(1, ChronoUnit.MINUTES)));
+        checkAlbumById(albumDao, albumId);
     }
 
     /**
@@ -73,29 +61,20 @@ public class AlbumDaoTest {
      * list is inserted.
      */
     @Test
-    // The whole point of the loop is to instantiate objects.
-    @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
     public void insert_savesMultipleAlbums() {
 
         final AlbumDao albumDao = new AlbumDao(new JdbcTemplate(this.dataSource));
 
         final String[] albumIds = {IdUtils.newId(), IdUtils.newId(), IdUtils.newId(), IdUtils.newId()};
 
-        final List<Album> toInsert = new LinkedList<>();
-
-        for (int i = 0; i < albumIds.length; i++) {
-            toInsert.add(new Album().setAlbumId(albumIds[i])
-                    .setAlbumName(String.format("test album %d", i))
-                    .setArtist(String.format("test artist %d", i))
-                    .setBatchId(BATCH_ID)
-                    .setGtin14(Long.toString(98_837_456_178_390L + i))
-                    .setStatus(Status.COMPLETE));
-        }
+        final List<Album> toInsert = Arrays.stream(albumIds)
+                .map(AlbumDaoTest::albumFromId)
+                .collect(Collectors.toList());
 
         final int rowsInserted = albumDao.insert(toInsert);
         Assert.assertEquals(albumIds.length, rowsInserted);
 
-        Arrays.stream(albumIds).forEach(a -> Assert.assertTrue(albumDao.findById(a).isPresent()));
+        Arrays.stream(albumIds).forEach(a -> checkAlbumById(albumDao, a));
     }
 
     /**
@@ -151,6 +130,44 @@ public class AlbumDaoTest {
         final Album album = albumDao.findById(albumId)
                 .orElseThrow(() -> new IllegalStateException(String.format("Album %s is missing from test data.", albumId)));
         return album.setStatus(newStatus);
+    }
+
+    private static String artistNameFromId(final String albumId) {
+        return String.format("TEST ARTIST %s", albumId);
+    }
+
+    private static String albumNameFromId(final String albumId) {
+        return String.format("TEST ALBUM %s", albumId);
+    }
+
+    private static String g14FromId(final String albumId) {
+        return albumId.substring(0, 14);
+    }
+
+    private static Album albumFromId(final String albumId) {
+
+        return new Album().setAlbumId(albumId)
+                .setAlbumName(albumNameFromId(albumId))
+                .setArtist(artistNameFromId(albumId))
+                .setBatchId(BATCH_ID)
+                .setGtin14(g14FromId(albumId))
+                .setStatus(Status.COMPLETE);
+    }
+
+    private static void checkAlbumById(final AlbumDao albumDao, final String albumId) {
+
+        final Optional<Album> toCompare = albumDao.findById(albumId);
+
+        Assert.assertTrue(toCompare.isPresent());
+
+        Assert.assertEquals(albumId, toCompare.get().getAlbumId());
+        Assert.assertEquals(albumNameFromId(albumId), toCompare.get().getAlbumName());
+        Assert.assertEquals(artistNameFromId(albumId), toCompare.get().getArtist());
+        Assert.assertEquals(BATCH_ID, toCompare.get().getBatchId());
+        Assert.assertEquals(g14FromId(albumId), toCompare.get().getGtin14());
+        Assert.assertEquals(Status.COMPLETE, toCompare.get().getStatus());
+        Assert.assertEquals(toCompare.get().getCreateTime(), toCompare.get().getLastUpdateTime());
+        Assert.assertTrue(toCompare.get().getCreateTime().isAfter(Instant.now().minus(1, ChronoUnit.MINUTES)));
     }
 
     private static void checkAlbumStatusUpdateById(final AlbumDao albumDao, final String albumId, final Status expectedStatus) {

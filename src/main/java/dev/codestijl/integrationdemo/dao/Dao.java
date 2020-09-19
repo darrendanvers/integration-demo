@@ -1,6 +1,7 @@
 package dev.codestijl.integrationdemo.dao;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -22,6 +23,16 @@ public interface Dao<T> {
     int insert(Collection<? extends T> toInsert);
 
     /**
+     * Convenience method when you only have one object to insert.
+     *
+     * @param toInsert The object to insert.
+     * @return The number of rows inserted.
+     */
+    default int insert(T toInsert) {
+        return insert(List.of(toInsert));
+    }
+
+    /**
      * Updates a collection of records in the DB. The default operation is a NOOP.
      *
      * @param toUpdate The collection of objects to update.
@@ -29,6 +40,16 @@ public interface Dao<T> {
      */
     default int update(Collection<? extends T> toUpdate) {
         return 0;
+    }
+
+    /**
+     * Convenience method when you only have one object to update.
+     *
+     * @param toUpdate The object to update.
+     * @return The number of rows updated.
+     */
+    default int update(T toUpdate) {
+        return insert(List.of(toUpdate));
     }
 
     /**
