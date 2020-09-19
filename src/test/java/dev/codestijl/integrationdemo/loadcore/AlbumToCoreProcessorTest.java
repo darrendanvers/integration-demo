@@ -19,7 +19,7 @@ import org.springframework.boot.test.context.SpringBootTest;
  * @author darren
  * @since 1.0.0
  */
-// This file beings all test GTINs with 98.
+// This file beings all test GTINs with 99.
 @SpringBootTest
 public class AlbumToCoreProcessorTest {
 

@@ -1,6 +1,7 @@
 package dev.codestijl.integrationdemo.dao;
 
 import java.util.Collection;
+import java.util.Optional;
 
 /**
  * Interface for the classes that handle most database interaction.
@@ -28,6 +29,16 @@ public interface Dao<T> {
      */
     default int update(Collection<? extends T> toUpdate) {
         return 0;
+    }
+
+    /**
+     * Looks for a given entity by its ID.
+     *
+     * @param id The ID of the entity to look for.
+     * @return The entity with that ID or empty if not found.
+     */
+    default Optional<T> findById(String id) {
+        return Optional.empty();
     }
 
     /**
